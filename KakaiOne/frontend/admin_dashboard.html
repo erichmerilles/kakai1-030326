@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <span class="navbar-brand mb-0 h1 mx-auto">Admin Control Center</span>
+            <button class="btn btn-danger btn-sm" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="offcanvas offcanvas-start bg-dark text-white" tabindex="-1" id="sidebarMenu">
+        <div class="offcanvas-header border-bottom border-secondary">
+            <h5 class="offcanvas-title">System Menu</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="accordion accordion-flush bg-dark" id="menuAccordion">
+
+                <div class="accordion-item bg-dark text-white border-secondary">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed bg-dark text-white" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#opsMenu">
+                            🛒 Daily Operations
+                        </button>
+                    </h2>
+                    <div id="opsMenu" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
+                        <div class="accordion-body p-2">
+                            <a href="pos.html" class="d-block text-light text-decoration-none py-1">POS Checkout</a>
+                            <a href="#" class="d-block text-light text-decoration-none py-1">Damage/Loss Entry</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item bg-dark text-white border-secondary">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed bg-dark text-white" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#invMenu">
+                            📦 Inventory & Logistics
+                        </button>
+                    </h2>
+                    <div id="invMenu" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
+                        <div class="accordion-body p-2">
+                            <a href="inventory.html" class="d-block text-light text-decoration-none py-1">Manage
+                                Inventory</a>
+                            <a href="#" class="d-block text-light text-decoration-none py-1">Receive Shipment</a>
+                            <a href="#" class="d-block text-light text-decoration-none py-1">Supplier Directory</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item bg-dark text-white border-secondary">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed bg-dark text-white" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#userMenu">
+                            👥 User Management
+                        </button>
+                    </h2>
+                    <div id="userMenu" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
+                        <div class="accordion-body p-2">
+                            <a href="#" class="d-block text-light text-decoration-none py-1">User Profiles</a>
+                            <a href="#" class="d-block text-light text-decoration-none py-1">RBAC Settings</a>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="#" class="d-block text-light text-decoration-none py-3 px-3 border-bottom border-secondary">📊
+                    Reports & BI</a>
+                <a href="activity_log.html" class="d-block text-light text-decoration-none py-3 px-3 border-bottom border-secondary">📋
+                    Activity Log</a>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+
+        <div class="alert alert-info d-flex justify-content-between align-items-center" role="alert">
+            <span><strong>🏆 Top Selling Product:</strong> <span id="topProduct">Loading...</span></span>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-white bg-success shadow-sm">
+                    <div class="card-body">
+                        <h6 class="card-title">Total Sales</h6>
+                        <h3 class="mb-0" id="kpiSales">₱0.00</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-primary shadow-sm">
+                    <div class="card-body">
+                        <h6 class="card-title">Net Profit</h6>
+                        <h3 class="mb-0" id="kpiProfit">₱0.00</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-danger shadow-sm">
+                    <div class="card-body">
+                        <h6 class="card-title">Critical Stocks</h6>
+                        <h3 class="mb-0" id="kpiCrit">0</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-warning text-dark shadow-sm">
+                    <div class="card-body">
+                        <h6 class="card-title">Expiring (30 Days)</h6>
+                        <h3 class="mb-0" id="kpiExpiring">0</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Stock Level Overview & Logistics Logic</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Wholesale (Boxes)</th>
+                            <th>Retail (Pieces)</th>
+                            <th>Shelf (Pieces)</th>
+                            <th>Suggested Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stockTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/dashboard.js"></script>
+</body>
+
+</html>
