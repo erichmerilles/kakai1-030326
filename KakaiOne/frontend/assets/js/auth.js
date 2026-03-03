@@ -20,19 +20,16 @@ document.getElementById('loginForm').addEventListener('submit', async function (
 
             switch (result.role) {
                 case 'admin':
-                    window.location.href = 'admin_dashboard.html';
+                    window.location.href = 'admin_dashboard.php'; // Updated
                     break;
                 case 'cashier':
-                    window.location.href = 'pos.html';
+                    window.location.href = 'pos.php';             // Updated
                     break;
                 case 'stockman':
-                    window.location.href = 'inventory.html'; // Default stockman view
-                    break;
-                case 'customer':
-                    window.location.href = 'customer_page.html';
+                    window.location.href = 'inventory.php';       // Updated
                     break;
                 default:
-                    window.location.href = 'index.html'; // Fallback for 'staff'
+                    window.location.href = 'index.php';           // Updated
             }
         } else {
             // Show error message

@@ -7,7 +7,7 @@ async function loadDashboard() {
 
         if (data.status === 'error') {
             if (data.message.includes('Access Denied')) {
-                window.location.href = 'index.html';
+                window.location.href = 'index.php'; // Changed from index.html
             }
             alert(data.message);
             return;
@@ -58,5 +58,5 @@ async function loadDashboard() {
 }
 
 function logout() {
-    window.location.href = 'index.html';
+    window.location.href = 'index.php';
 }

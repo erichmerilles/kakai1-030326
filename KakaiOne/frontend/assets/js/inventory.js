@@ -10,7 +10,7 @@ async function loadInventory() {
             showAlert('danger', data.message);
             // If access denied, kick them back to login
             if (data.message.includes('Access Denied')) {
-                window.location.href = 'index.html';
+                window.location.href = 'index.php';
             }
             return;
         }
@@ -61,7 +61,7 @@ function showAlert(type, message) {
 }
 
 function logout() {
-    window.location.href = 'index.html';
+    window.location.href = 'index.php';
 }
 
 // Placeholder for the next step

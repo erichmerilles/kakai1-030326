@@ -7,7 +7,7 @@ async function loadLogs() {
 
         if (data.status === 'error') {
             alert(data.message);
-            window.location.href = 'index.html';
+            window.location.href = 'index.php';
             return;
         }
 
@@ -71,7 +71,7 @@ async function loadLogs() {
 async function logout() {
     try {
         await fetch('../backend/auth/logout.php');
-        window.location.href = 'index.html';
+        window.location.href = 'index.php';
     } catch (error) {
         console.error("Logout failed", error);
     }

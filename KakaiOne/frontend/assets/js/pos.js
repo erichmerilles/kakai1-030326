@@ -9,7 +9,7 @@ async function loadProducts() {
 
         if (data.status === 'error') {
             showAlert('danger', data.message);
-            if (data.message.includes('Access Denied')) window.location.href = 'index.html';
+            if (data.message.includes('Access Denied')) window.location.href = 'index.php';
             return;
         }
 
@@ -126,5 +126,5 @@ function showAlert(type, message) {
 }
 
 function logout() {
-    window.location.href = 'index.html';
+    window.location.href = 'index.php';
 }
