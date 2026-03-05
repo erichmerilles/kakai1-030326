@@ -1,8 +1,19 @@
 <?php
 session_start();
 if (isset($_SESSION['user_id'])) {
-    // If already logged in, redirect based on role or default to dashboard
-    header("Location: admin_dashboard.php");
+    // Intelligent Routing based on Role
+    $role = $_SESSION['role'] ?? '';
+
+    if ($role === 'admin') {
+        header("Location: admin_dashboard.php");
+    } elseif ($role === 'cashier') {
+        header("Location: pos.php");
+    } elseif ($role === 'stockman') {
+        header("Location: inventory.php");
+    } else {
+        // Fallback for unknown roles to prevent loops
+        header("Location: index.php?error=role_undefined");
+    }
     exit;
 }
 ?>

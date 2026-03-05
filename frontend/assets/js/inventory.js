@@ -105,3 +105,47 @@ async function explodeBox(batchId, productId) {
         showAlert('danger', "A network error occurred.");
     }
 }
+
+// Add this to the existing file
+document.querySelector('.btn-light.text-primary').addEventListener('click', openReceiveModal);
+
+let receiveModal;
+
+async function openReceiveModal() {
+    // 1. Fetch Product List for Dropdown
+    const response = await fetch('../backend/catalog/get_products.php');
+    const data = await response.json();
+
+    const select = document.getElementById('rec_product');
+    select.innerHTML = '';
+    data.data.forEach(p => {
+        select.innerHTML += `<option value="${p.product_id}">${p.name} (SKU: ${p.sku})</option>`;
+    });
+
+    // 2. Show Modal
+    receiveModal = new bootstrap.Modal(document.getElementById('receiveModal'));
+    receiveModal.show();
+}
+
+async function submitReceive() {
+    const data = {
+        product_id: document.getElementById('rec_product').value,
+        qty: document.getElementById('rec_qty').value,
+        expiry: document.getElementById('rec_expiry').value
+    };
+
+    const response = await fetch('../backend/inventory/receive_stock.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    const result = await response.json();
+
+    if (result.status === 'success') {
+        Swal.fire('Success', result.message, 'success');
+        receiveModal.hide();
+        loadInventory(); // Refresh the background table
+    } else {
+        Swal.fire('Error', result.message, 'error');
+    }
+}

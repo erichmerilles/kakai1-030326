@@ -1,35 +1,51 @@
 document.addEventListener('DOMContentLoaded', loadLogs);
 
 async function loadLogs() {
+    const tbody = document.getElementById('logTableBody');
+    if (!tbody) return;
+
+    // 1. Set Date Defaults (Last 30 Days)
+    const today = new Date();
+    const last30 = new Date();
+    last30.setDate(today.getDate() - 30);
+
+    const dateStartInput = document.getElementById('dateStart');
+    const dateEndInput = document.getElementById('dateEnd');
+
+    // Only set default values if they are empty
+    if (!dateStartInput.value) {
+        dateStartInput.value = last30.toISOString().split('T')[0];
+        dateEndInput.value = today.toISOString().split('T')[0];
+    }
+
+    const start = dateStartInput.value;
+    const end = dateEndInput.value;
+
     try {
-        const response = await fetch('../backend/logs/get_logs.php');
+        // 2. Fetch with Date Parameters
+        const response = await fetch(`../backend/logs/get_logs.php?start=${start}&end=${end}`);
         const data = await response.json();
 
         if (data.status === 'error') {
-            alert(data.message);
-            window.location.href = 'index.php';
+            console.error(data.message);
             return;
         }
 
-        // UI Polish: Show the dashboard button only if the user is an admin
-        if (data.role === 'admin') {
-            document.getElementById('btnDashboard').classList.remove('d-none');
-        }
-
-        const tbody = document.getElementById('logTableBody');
         tbody.innerHTML = '';
 
+        // Update the badge count
+        const countBadge = document.getElementById('recordCount');
+        if (countBadge) countBadge.textContent = `${data.data.length} Records`;
+
         if (data.data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4">No activity logged yet.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No activity found for this period.</td></tr>`;
             return;
         }
 
         data.data.forEach(log => {
-            // Format the date nicely
             const dateObj = new Date(log.movement_date);
             const formattedDate = dateObj.toLocaleString();
 
-            // Color-code the actions for UI Polish
             let actionBadge = '';
             switch (log.movement_type) {
                 case 'sale':
@@ -45,9 +61,8 @@ async function loadLogs() {
                     actionBadge = `<span class="badge bg-secondary">${log.movement_type.toUpperCase()}</span>`;
             }
 
-            // Handle NULL locations cleanly
-            const fromLoc = log.from_location ? log.from_location : '<span class="text-muted">Supplier/System</span>';
-            const toLoc = log.to_location ? log.to_location : '<span class="text-muted">Customer/Loss</span>';
+            const fromLoc = log.from_location ? log.from_location : '<span class="text-muted small">System</span>';
+            const toLoc = log.to_location ? log.to_location : '<span class="text-muted small">Loss/Customer</span>';
 
             tbody.innerHTML += `
                 <tr>
@@ -67,7 +82,7 @@ async function loadLogs() {
     }
 }
 
-// The new, secure logout function
+// Global Logout Function
 async function logout() {
     try {
         await fetch('../backend/auth/logout.php');

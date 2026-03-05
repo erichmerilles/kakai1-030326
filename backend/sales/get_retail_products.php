@@ -11,15 +11,24 @@ if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['admin', 'cashier
 }
 
 try {
-    // Fetch products that have stock in the Retail location (Location ID 2)
-    // You can expand this to include Store Shelf (Location ID 3) later
+    // FIX 1: Changed location_id from 2 to 3 (Store Shelf)
+    // FIX 2: Used LEFT JOIN so products with 0 stock still appear (optional, but good for visibility)
+    // FIX 3: Used COALESCE to return 0 instead of NULL if no stock exists
+
     $stmt = $pdo->query("
-        SELECT p.product_id, p.sku, p.name, p.current_selling_price AS price, b.batch_id, b.quantity AS stock
-        FROM inventory_batches b
-        JOIN products p ON b.product_id = p.product_id
-        WHERE b.location_id = 2 AND b.quantity > 0
+        SELECT 
+            p.product_id, 
+            p.sku, 
+            p.name, 
+            p.current_selling_price AS price, 
+            COALESCE(SUM(b.quantity), 0) AS qty
+        FROM products p
+        LEFT JOIN inventory_batches b ON p.product_id = b.product_id AND b.location_id = 3
+        GROUP BY p.product_id, p.sku, p.name, p.current_selling_price
+        ORDER BY p.name ASC
     ");
-    $products = $stmt->fetchAll();
+
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode(["status" => "success", "data" => $products]);
 } catch (PDOException $e) {

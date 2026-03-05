@@ -14,7 +14,11 @@ $user_id = $_SESSION['user_id'];
 $role = $_SESSION['role'];
 
 try {
-    // Base SQL query joining products, locations, and users
+    // 1. Get Date Filters (Default to Last 30 Days)
+    $startDate = $_GET['start'] ?? date('Y-m-d', strtotime('-30 days'));
+    $endDate = $_GET['end'] ?? date('Y-m-d');
+
+    // 2. Build Query
     $sql = "
         SELECT 
             sm.movement_id,
@@ -30,16 +34,19 @@ try {
         LEFT JOIN locations l_from ON sm.from_location_id = l_from.location_id
         LEFT JOIN locations l_to ON sm.to_location_id = l_to.location_id
         JOIN users u ON sm.user_id = u.user_id
+        WHERE DATE(sm.movement_date) BETWEEN :start AND :end
     ";
 
-    // If they are not an Admin, restrict the view to their own actions only
+    // 3. RBAC: If not Admin, restrict to own logs
     if ($role !== 'admin') {
-        $sql .= " WHERE sm.user_id = :user_id ";
+        $sql .= " AND sm.user_id = :user_id ";
     }
 
-    $sql .= " ORDER BY sm.movement_date DESC LIMIT 100"; // Get the latest 100 logs
+    $sql .= " ORDER BY sm.movement_date DESC";
 
     $stmt = $pdo->prepare($sql);
+    $stmt->bindParam(':start', $startDate);
+    $stmt->bindParam(':end', $endDate);
 
     if ($role !== 'admin') {
         $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);

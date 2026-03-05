@@ -1,57 +1,87 @@
 let cart = [];
 
-document.addEventListener('DOMContentLoaded', loadProducts);
+document.addEventListener('DOMContentLoaded', () => {
+    loadProducts();
+});
 
+// 1. Load Products from Database
 async function loadProducts() {
     try {
         const response = await fetch('../backend/sales/get_retail_products.php');
         const data = await response.json();
 
-        if (data.status === 'error') {
-            showAlert('danger', data.message);
-            if (data.message.includes('Access Denied')) window.location.href = 'index.php';
-            return;
+        if (data.status === 'success') {
+            const tbody = document.getElementById('productList');
+            tbody.innerHTML = '';
+
+            data.data.forEach(p => {
+                // Determine button state based on stock
+                const isOutOfStock = p.qty <= 0;
+                const btnState = isOutOfStock ? 'disabled' : '';
+                const btnClass = isOutOfStock ? 'btn-secondary' : 'btn-primary';
+                const btnText = isOutOfStock ? 'Out of Stock' : 'Add';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><small class="text-muted">${p.sku}</small></td>
+                        <td class="fw-bold">${p.name}</td>
+                        <td>₱${parseFloat(p.price).toFixed(2)}</td>
+                        <td>
+                            <span class="badge ${p.qty < 10 ? 'bg-danger' : 'bg-success'}">
+                                ${p.qty}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm ${btnClass}" ${btnState} 
+                                onclick="addToCart(${p.product_id}, '${p.name}', ${p.price}, ${p.qty})">
+                                ${btnText}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
         }
-
-        const productList = document.getElementById('productList');
-        productList.innerHTML = '';
-
-        data.data.forEach(p => {
-            productList.innerHTML += `
-                <tr>
-                    <td>${p.sku}</td>
-                    <td>${p.name}</td>
-                    <td>₱${parseFloat(p.price).toFixed(2)}</td>
-                    <td><span class="badge bg-success">${p.stock}</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-primary" onclick="addToCart(${p.batch_id}, ${p.product_id}, '${p.name}', ${p.price}, ${p.stock})">
-                            Add to Cart
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
     } catch (error) {
-        showAlert('danger', 'Failed to load products.');
+        console.error("Error loading products:", error);
     }
 }
 
-function addToCart(batchId, productId, name, price, maxStock) {
-    const existing = cart.find(item => item.batch_id === batchId);
+// 2. Add Item to Cart
+function addToCart(id, name, price, maxStock) {
+    // Check if product is already in cart
+    const existingItem = cart.find(item => item.product_id === id);
 
-    if (existing) {
-        if (existing.qty >= maxStock) {
-            showAlert('warning', `Not enough stock for ${name}`);
+    if (existingItem) {
+        if (existingItem.qty < maxStock) {
+            existingItem.qty++;
+        } else {
+            Swal.fire('Stock Limit', 'Cannot add more than available stock.', 'warning');
             return;
         }
-        existing.qty += 1;
     } else {
-        cart.push({ batch_id: batchId, product_id: productId, name: name, price: price, qty: 1 });
+        cart.push({
+            product_id: id,
+            name: name,
+            price: parseFloat(price),
+            qty: 1,
+            max: maxStock
+        });
     }
+
+    // Toast Notification for better UX
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 1500,
+        timerProgressBar: true
+    });
+    Toast.fire({ icon: 'success', title: `Added ${name}` });
 
     renderCart();
 }
 
+// 3. Render Cart UI
 function renderCart() {
     const cartList = document.getElementById('cartList');
     const cartTotal = document.getElementById('cartTotal');
@@ -59,19 +89,25 @@ function renderCart() {
     cartList.innerHTML = '';
     let total = 0;
 
+    if (cart.length === 0) {
+        cartList.innerHTML = '<li class="list-group-item text-center text-muted">Cart is empty</li>';
+        cartTotal.textContent = '₱0.00';
+        return;
+    }
+
     cart.forEach((item, index) => {
-        const sub = item.price * item.qty;
-        total += sub;
+        const subtotal = item.price * item.qty;
+        total += subtotal;
 
         cartList.innerHTML += `
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <div>
                     <h6 class="my-0">${item.name}</h6>
-                    <small class="text-muted">₱${parseFloat(item.price).toFixed(2)} x ${item.qty}</small>
+                    <small class="text-muted">₱${item.price.toFixed(2)} x ${item.qty}</small>
                 </div>
                 <div class="d-flex align-items-center">
-                    <span class="me-3 fw-bold">₱${sub.toFixed(2)}</span>
-                    <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${index})">X</button>
+                    <span class="text-primary fw-bold me-3">₱${subtotal.toFixed(2)}</span>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="removeFromCart(${index})">&times;</button>
                 </div>
             </li>
         `;
@@ -80,51 +116,81 @@ function renderCart() {
     cartTotal.textContent = `₱${total.toFixed(2)}`;
 }
 
+// 4. Remove Item
 function removeFromCart(index) {
     cart.splice(index, 1);
     renderCart();
 }
 
+// 5. Clear Cart
 function clearCart() {
-    cart = [];
-    renderCart();
+    if (cart.length === 0) return;
+
+    Swal.fire({
+        title: 'Clear Cart?',
+        text: "Remove all items?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Yes, clear it'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            cart = [];
+            renderCart();
+        }
+    });
 }
 
+// 6. Process Checkout (THE FIX IS HERE)
 async function processCheckout() {
     if (cart.length === 0) {
-        showAlert('warning', 'Cart is empty!');
+        Swal.fire('Empty Cart', 'Please add items before checking out.', 'warning');
         return;
     }
 
-    try {
-        const response = await fetch('../backend/sales/process_pos.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cart: cart })
-        });
+    // Confirm Sale
+    const confirm = await Swal.fire({
+        title: 'Complete Sale?',
+        text: `Total: ${document.getElementById('cartTotal').textContent}`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        confirmButtonText: 'Yes, Process Payment'
+    });
 
-        const data = await response.json();
+    if (confirm.isConfirmed) {
+        try {
+            // Show Loading
+            Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-        if (data.status === 'success') {
-            showAlert('success', data.message);
-            clearCart();
-            loadProducts(); // Refresh stock numbers
-        } else {
-            showAlert('danger', data.message);
+            const response = await fetch('../backend/sales/process_pos.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cart: cart })
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                await Swal.fire('Success!', `Transaction Complete.\nRef: ${result.receipt_no || 'N/A'}`, 'success');
+                cart = [];
+                renderCart();
+                loadProducts(); // Refresh stock counts
+            } else {
+                Swal.fire('Failed', result.message, 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error', 'Transaction failed. Check console.', 'error');
         }
-    } catch (error) {
-        showAlert('danger', 'Checkout failed.');
     }
 }
 
+// 7. Wrapper to prevent crashes if old code calls showAlert
 function showAlert(type, message) {
-    const alertBox = document.getElementById('alertBox');
-    alertBox.className = `alert alert-${type} mb-3`;
-    alertBox.textContent = message;
-    alertBox.classList.remove('d-none');
-    setTimeout(() => alertBox.classList.add('d-none'), 4000); // Auto-hide
-}
-
-function logout() {
-    window.location.href = 'index.php';
+    Swal.fire({
+        icon: type === 'danger' ? 'error' : type,
+        title: message,
+        timer: 2000,
+        showConfirmButton: false
+    });
 }

@@ -1,0 +1,241 @@
+/* frontend/assets/css/style.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    /* Premium Palette */
+    --sidebar-width: 280px;
+    --sidebar-bg: #1e1e2d;
+    /* Deep Premium Navy/Black */
+    --sidebar-text: #9899ac;
+    /* Muted Text */
+    --sidebar-hover-bg: #2a2a3c;
+    /* Slightly lighter for hover */
+    --active-text: #ffffff;
+    --primary-color: #3699ff;
+    /* Vibrant Blue */
+    --body-bg: #f5f8fa;
+    /* Clean Light Grey */
+    --card-shadow: 0 0 20px 0 rgba(76, 87, 125, 0.02);
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--body-bg);
+    min-height: 100vh;
+    color: #3f4254;
+    font-size: 0.95rem;
+}
+
+/* --- SIDEBAR CONTAINER --- */
+.sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    z-index: 1040;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.05);
+    /* Subtle lift */
+    overflow-y: auto;
+}
+
+/* --- BRANDING AREA --- */
+.sidebar-header {
+    height: 80px;
+    /* Taller header */
+    padding: 0 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: rgba(0, 0, 0, 0.1);
+    /* Subtle darkening */
+}
+
+.brand-logo {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #fff;
+    text-decoration: none;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+}
+
+.brand-icon {
+    width: 35px;
+    height: 35px;
+    background: linear-gradient(135deg, #3699ff 0%, #007bff 100%);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    margin-right: 12px;
+    box-shadow: 0 4px 10px rgba(54, 153, 255, 0.3);
+}
+
+/* --- NAVIGATION LINKS --- */
+.sidebar-content {
+    padding: 20px 15px;
+}
+
+.nav-section-label {
+    color: #5d5f75;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 25px 0 10px 15px;
+}
+
+.nav-pills .nav-link {
+    color: var(--sidebar-text);
+    padding: 12px 20px;
+    margin-bottom: 5px;
+    border-radius: 8px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.nav-pills .nav-link:hover {
+    color: #fff;
+    background-color: var(--sidebar-hover-bg);
+}
+
+.nav-pills .nav-link.active {
+    background-color: #1b1b28;
+    /* Darker active background */
+    color: var(--active-color);
+    /* Blue text */
+    position: relative;
+}
+
+/* The "Glowing Stick" Indicator */
+.nav-pills .nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 25px;
+    width: 4px;
+    background-color: var(--primary-color);
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 0 10px rgba(54, 153, 255, 0.5);
+}
+
+.nav-pills .nav-link i {
+    font-size: 1.2rem;
+    margin-right: 14px;
+    width: 24px;
+    text-align: center;
+    color: #494b74;
+    /* Dimmed icon by default */
+    transition: color 0.2s;
+}
+
+.nav-pills .nav-link.active i {
+    color: var(--primary-color);
+    /* Active icon color */
+}
+
+.nav-pills .nav-link:hover i {
+    color: #fff;
+}
+
+/* --- USER PROFILE (BOTTOM) --- */
+.user-profile {
+    margin-top: auto;
+    padding: 20px 25px;
+    background-color: #1a1a27;
+    border-top: 1px solid #2a2a3c;
+}
+
+.user-card {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.user-avatar {
+    width: 42px;
+    height: 42px;
+    background-color: #3f4254;
+    color: #fff;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-right: 12px;
+}
+
+/* --- RESPONSIVENESS --- */
+@media (min-width: 992px) {
+    body {
+        padding-left: var(--sidebar-width);
+    }
+
+    .mobile-header {
+        display: none !important;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .sidebar.show {
+        transform: translateX(0);
+    }
+
+    .mobile-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 15px 20px;
+        background: var(--sidebar-bg);
+        color: white;
+        position: sticky;
+        top: 0;
+        z-index: 1030;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .brand-icon-mobile {
+        background: var(--primary-color);
+        width: 30px;
+        height: 30px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+    }
+
+    .sidebar-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(2px);
+        z-index: 1035;
+        display: none;
+    }
+
+    .sidebar-backdrop.show {
+        display: block;
+    }
+}

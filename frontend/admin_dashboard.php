@@ -17,6 +17,22 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     <?php include 'navbar.php'; ?>
 
     <div class="container">
+        <div class="row mb-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-bold">Start Date</label>
+                <input type="date" id="dateStart" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold">End Date</label>
+                <input type="date" id="dateEnd" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary btn-sm w-100" onclick="loadDashboard()">
+                    Filter Data
+                </button>
+            </div>
+        </div>
+
         <div class="row g-4 mb-4">
             <div class="col-md-3">
                 <div class="card bg-primary text-white p-3 h-100">
@@ -44,7 +60,12 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
             </div>
         </div>
 
-        <div class="card">
+        <div class="alert alert-info shadow-sm d-flex align-items-center" role="alert">
+            <span class="fw-bold me-2">🏆 Top Selling Product (Selected Period):</span>
+            <span id="topProduct">Loading...</span>
+        </div>
+
+        <div class="card shadow-sm">
             <div class="card-header bg-white py-3">
                 <h5 class="mb-0 fw-bold">Inventory Intelligence</h5>
             </div>
