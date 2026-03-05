@@ -26,9 +26,11 @@ $role = $_SESSION['role'] ?? 'guest';
     <a class="text-white text-decoration-none fw-bold fs-5" href="#">
         <span class="brand-icon-mobile"><i class="bi bi-box-seam"></i></span> KakaiOne
     </a>
-    <button class="btn text-white border-0" onclick="toggleSidebar()">
-        <i class="bi bi-list fs-1"></i>
-    </button>
+    <div class="d-flex align-items-center">
+        <button class="btn text-white border-0" onclick="toggleSidebar()">
+            <i class="bi bi-list fs-1"></i>
+        </button>
+    </div>
 </div>
 
 <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
@@ -45,52 +47,57 @@ $role = $_SESSION['role'] ?? 'guest';
         <ul class="nav nav-pills flex-column">
 
             <?php if ($role === 'admin'): ?>
-                <div class="nav-section-label">Core Management</div>
-
-                <li class="nav-item">
+                <div class="nav-section-label">Overview</div>
+                <li class="nav-item mb-2">
                     <a href="admin_dashboard.php" class="nav-link <?php echo isActive('admin_dashboard.php'); ?>">
-                        <i class="bi bi-speedometer2"></i> Dashboard
+                        <i class="bi bi-house-door-fill"></i> Home / Dashboard
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a href="products.php" class="nav-link <?php echo isActive('products.php'); ?>">
-                        <i class="bi bi-box-fill"></i> Product Manager
+                <li class="nav-item mb-2">
+                    <a href="analytics.php" class="nav-link <?php echo isActive('analytics.php'); ?>">
+                        <i class="bi bi-pie-chart-fill"></i> Profit Analytics
                     </a>
                 </li>
             <?php endif; ?>
 
             <?php if (in_array($role, ['admin', 'cashier'])): ?>
-                <div class="nav-section-label">Sales</div>
-
+                <div class="nav-section-label">Store Front</div>
                 <li class="nav-item">
                     <a href="pos.php" class="nav-link <?php echo isActive('pos.php'); ?>">
-                        <i class="bi bi-cart-check-fill"></i> Cash Register
+                        <i class="bi bi-cart-fill"></i> Cash Register
                     </a>
                 </li>
             <?php endif; ?>
 
             <?php if (in_array($role, ['admin', 'stockman'])): ?>
-                <div class="nav-section-label">Inventory Control</div>
-
+                <div class="nav-section-label">Inventory</div>
                 <li class="nav-item">
                     <a href="restock.php" class="nav-link <?php echo isActive('restock.php'); ?>">
-                        <i class="bi bi-arrow-repeat"></i> Shelf Restock
+                        <i class="bi bi-arrow-down-up"></i> Refill Shelves
                     </a>
                 </li>
-
+                <li class="nav-item">
+                    <a href="stock_adjustments.php" class="nav-link <?php echo isActive('stock_adjustments.php'); ?>">
+                        <i class="bi bi-truck"></i> Receive & Adjust
+                    </a>
+                </li>
                 <li class="nav-item">
                     <a href="inventory.php" class="nav-link <?php echo isActive('inventory.php'); ?>">
-                        <i class="bi bi-clipboard-data-fill"></i> Stock Report
+                        <i class="bi bi-boxes"></i> Stock Levels
                     </a>
                 </li>
             <?php endif; ?>
 
             <?php if ($role === 'admin'): ?>
-                <div class="nav-section-label">System</div>
-
+                <div class="nav-section-label">Admin Controls</div>
+                <li class="nav-item">
+                    <a href="products.php" class="nav-link <?php echo isActive('products.php'); ?>">
+                        <i class="bi bi-tags-fill"></i> Manage Products
+                    </a>
+                </li>
                 <li class="nav-item">
                     <a href="activity_log.php" class="nav-link <?php echo isActive('activity_log.php'); ?>">
-                        <i class="bi bi-shield-lock"></i> Audit Logs
+                        <i class="bi bi-clock-history"></i> Activity History
                     </a>
                 </li>
             <?php endif; ?>
@@ -125,12 +132,12 @@ $role = $_SESSION['role'] ?? 'guest';
     function logout() {
         Swal.fire({
             title: 'Sign Out?',
-            text: "End your session?",
+            text: "Are you sure you want to log out?",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#f1416c',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, Sign Out'
+            confirmButtonText: 'Yes, Log Out'
         }).then((result) => {
             if (result.isConfirmed) {
                 window.location.href = 'logout.php';

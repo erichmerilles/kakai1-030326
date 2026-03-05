@@ -1,10 +1,11 @@
+// frontend/assets/js/pos.js
 let cart = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     loadProducts();
 });
 
-// 1. Load Products from Database
+// 1. Load Products (With Separated Wholesale/Shelf Stock Logic)
 async function loadProducts() {
     try {
         const response = await fetch('../backend/sales/get_retail_products.php');
@@ -15,27 +16,68 @@ async function loadProducts() {
             tbody.innerHTML = '';
 
             data.data.forEach(p => {
-                // Determine button state based on stock
-                const isOutOfStock = p.qty <= 0;
-                const btnState = isOutOfStock ? 'disabled' : '';
-                const btnClass = isOutOfStock ? 'btn-secondary' : 'btn-primary';
-                const btnText = isOutOfStock ? 'Out of Stock' : 'Add';
+                // Read the separated stock locations from the updated backend
+                const shelfStock = parseInt(p.shelf_qty || 0);
+                const wholesaleStock = parseInt(p.wholesale_qty || 0);
+                const boxSize = parseInt(p.units_per_box);
+                const unitName = p.base_unit || 'pcs';
+
+                const packPrice = parseFloat(p.pack_price || p.price);
+                const boxPrice = parseFloat(p.box_price || (p.price * boxSize));
+
+                // Fix apostrophe bug in names (e.g., Lay's)
+                const safeName = p.name.replace(/'/g, "\\'");
+
+                const canSellPack = shelfStock > 0;
+
+                // Smart Box Button Logic
+                let boxBtnHTML = '';
+                if (!boxSize || boxSize <= 0 || isNaN(boxSize)) {
+                    boxBtnHTML = `<button class="btn btn-sm btn-outline-secondary w-50" disabled>No Box Size</button>`;
+                } else if (wholesaleStock < 1) {
+                    boxBtnHTML = `
+                        <button class="btn btn-sm btn-outline-secondary w-50" disabled>
+                            0 Boxes<br><small>in Wholesale</small>
+                        </button>
+                    `;
+                } else {
+                    boxBtnHTML = `
+                        <button class="btn btn-sm btn-outline-dark w-50" 
+                            onclick="addToCart(${p.product_id}, '${safeName}', ${boxPrice}, 1, 'box', ${wholesaleStock})">
+                            Add Box<br>
+                            <small>₱${boxPrice.toFixed(2)}</small>
+                        </button>
+                    `;
+                }
 
                 tbody.innerHTML += `
                     <tr>
-                        <td><small class="text-muted">${p.sku}</small></td>
-                        <td class="fw-bold">${p.name}</td>
-                        <td>₱${parseFloat(p.price).toFixed(2)}</td>
                         <td>
-                            <span class="badge ${p.qty < 10 ? 'bg-danger' : 'bg-success'}">
-                                ${p.qty}
-                            </span>
+                            <div class="fw-bold">${p.name}</div>
+                            <small class="text-muted">${p.sku}</small>
                         </td>
                         <td>
-                            <button class="btn btn-sm ${btnClass}" ${btnState} 
-                                onclick="addToCart(${p.product_id}, '${p.name}', ${p.price}, ${p.qty})">
-                                ${btnText}
-                            </button>
+                            <div class="d-flex flex-column gap-1 text-center">
+                                <span class="badge ${shelfStock < 10 ? 'bg-danger' : 'bg-success'} fs-6">
+                                    ${shelfStock} ${unitName} (Shelf)
+                                </span>
+                                <span class="badge ${wholesaleStock < 1 ? 'bg-danger' : 'bg-secondary'} fs-6">
+                                    ${wholesaleStock} Boxes (Wholesale)
+                                </span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-primary w-50" 
+                                    ${!canSellPack ? 'disabled' : ''}
+                                    onclick="addToCart(${p.product_id}, '${safeName}', ${packPrice}, 1, '${unitName}', ${shelfStock})">
+                                    Add ${unitName}<br>
+                                    <small>₱${packPrice.toFixed(2)}</small>
+                                </button>
+
+                                ${boxBtnHTML}
+                            </div>
+                            <small class="text-muted d-block text-center mt-1">1 Box = ${boxSize || '?'} ${unitName}</small>
                         </td>
                     </tr>
                 `;
@@ -47,36 +89,44 @@ async function loadProducts() {
 }
 
 // 2. Add Item to Cart
-function addToCart(id, name, price, maxStock) {
-    // Check if product is already in cart
-    const existingItem = cart.find(item => item.product_id === id);
+function addToCart(id, name, price, qtyToAdd, type, currentStock) {
+    const displayName = type === 'box' ? `${name} (BOX)` : `${name} (${type})`;
+
+    // Check if this specific type (Box/Pack) is already in cart
+    const existingItem = cart.find(item => item.product_id === id && item.type === type);
+
+    // Calculate how many of this EXACT type are in the cart to prevent overselling
+    const totalInCart = cart
+        .filter(item => item.product_id === id && item.type === type)
+        .reduce((sum, item) => sum + item.cart_qty, 0);
+
+    // qtyToAdd is always 1 here because the button adds 1 Box or 1 Pack
+    if ((totalInCart + 1) > currentStock) {
+        Swal.fire('Insufficient Stock', `You only have ${currentStock} available in this location.`, 'warning');
+        return;
+    }
 
     if (existingItem) {
-        if (existingItem.qty < maxStock) {
-            existingItem.qty++;
-        } else {
-            Swal.fire('Stock Limit', 'Cannot add more than available stock.', 'warning');
-            return;
-        }
+        existingItem.cart_qty++;
     } else {
         cart.push({
             product_id: id,
-            name: name,
+            name: displayName,
             price: parseFloat(price),
-            qty: 1,
-            max: maxStock
+            cart_qty: 1,
+            qty_per_unit: qtyToAdd,
+            type: type
         });
     }
 
-    // Toast Notification for better UX
     const Toast = Swal.mixin({
         toast: true,
         position: 'top-end',
         showConfirmButton: false,
-        timer: 1500,
+        timer: 1000,
         timerProgressBar: true
     });
-    Toast.fire({ icon: 'success', title: `Added ${name}` });
+    Toast.fire({ icon: 'success', title: `Added ${displayName}` });
 
     renderCart();
 }
@@ -85,25 +135,31 @@ function addToCart(id, name, price, maxStock) {
 function renderCart() {
     const cartList = document.getElementById('cartList');
     const cartTotal = document.getElementById('cartTotal');
+    const cartCount = document.getElementById('cartCount');
 
     cartList.innerHTML = '';
     let total = 0;
+    let totalItems = 0;
 
     if (cart.length === 0) {
-        cartList.innerHTML = '<li class="list-group-item text-center text-muted">Cart is empty</li>';
+        cartList.innerHTML = '<li class="list-group-item text-center text-muted py-4"><i class="bi bi-cart-x display-4 d-block mb-2"></i>Cart is empty</li>';
         cartTotal.textContent = '₱0.00';
+        if (cartCount) cartCount.textContent = '0 items';
         return;
     }
 
     cart.forEach((item, index) => {
-        const subtotal = item.price * item.qty;
+        const subtotal = item.price * item.cart_qty;
         total += subtotal;
+        totalItems += item.cart_qty;
 
         cartList.innerHTML += `
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <div>
                     <h6 class="my-0">${item.name}</h6>
-                    <small class="text-muted">₱${item.price.toFixed(2)} x ${item.qty}</small>
+                    <small class="text-muted">
+                        ₱${item.price.toFixed(2)} x ${item.cart_qty} 
+                    </small>
                 </div>
                 <div class="d-flex align-items-center">
                     <span class="text-primary fw-bold me-3">₱${subtotal.toFixed(2)}</span>
@@ -114,6 +170,7 @@ function renderCart() {
     });
 
     cartTotal.textContent = `₱${total.toFixed(2)}`;
+    if (cartCount) cartCount.textContent = `${totalItems} items`;
 }
 
 // 4. Remove Item
@@ -141,51 +198,98 @@ function clearCart() {
     });
 }
 
-// 6. Process Checkout (THE FIX IS HERE)
+// 6. Process Checkout (INTEGRATED WITH ROUTING)
 async function processCheckout() {
     if (cart.length === 0) {
-        Swal.fire('Empty Cart', 'Please add items before checking out.', 'warning');
+        Swal.fire('Empty Cart', 'Please add items.', 'warning');
         return;
     }
 
-    // Confirm Sale
     const confirm = await Swal.fire({
-        title: 'Complete Sale?',
+        title: 'Confirm Sale',
         text: `Total: ${document.getElementById('cartTotal').textContent}`,
         icon: 'question',
         showCancelButton: true,
-        confirmButtonColor: '#28a745',
-        confirmButtonText: 'Yes, Process Payment'
+        confirmButtonColor: '#198754',
+        confirmButtonText: 'Pay Now'
     });
 
     if (confirm.isConfirmed) {
+        // Send the exact cart directly to backend with 'type' included
+        // This tells PHP whether to deduct from Wholesale (box) or Shelf (packs)
+        const backendCart = cart.map(item => {
+            return {
+                product_id: item.product_id,
+                cart_qty: item.cart_qty,
+                price: item.price,
+                type: item.type
+            };
+        });
+
         try {
-            // Show Loading
             Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             const response = await fetch('../backend/sales/process_pos.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cart: cart })
+                body: JSON.stringify({ cart: backendCart })
             });
             const result = await response.json();
 
             if (result.status === 'success') {
-                await Swal.fire('Success!', `Transaction Complete.\nRef: ${result.receipt_no || 'N/A'}`, 'success');
-                cart = [];
-                renderCart();
-                loadProducts(); // Refresh stock counts
+                Swal.close();
+
+                buildReceipt(result.receipt_no, cart, document.getElementById('cartTotal').textContent);
+
+                const receiptModal = new bootstrap.Modal(document.getElementById('receiptModal'));
+                receiptModal.show();
+
             } else {
-                Swal.fire('Failed', result.message, 'error');
+                Swal.fire('Error', result.message, 'error');
             }
         } catch (error) {
             console.error(error);
-            Swal.fire('Error', 'Transaction failed. Check console.', 'error');
+            Swal.fire('Error', 'Transaction failed.', 'error');
         }
     }
 }
 
-// 7. Wrapper to prevent crashes if old code calls showAlert
+// 7. Build the Receipt HTML
+function buildReceipt(receiptNo, currentCart, totalAmount) {
+    document.getElementById('receiptNumber').textContent = receiptNo;
+    document.getElementById('receiptDate').textContent = new Date().toLocaleString('en-PH');
+    document.getElementById('receiptTotalDue').textContent = totalAmount;
+
+    const receiptItemsContainer = document.getElementById('receiptItems');
+    receiptItemsContainer.innerHTML = '';
+
+    currentCart.forEach(item => {
+        const subtotal = item.price * item.cart_qty;
+
+        const shortName = item.name.length > 15 ? item.name.substring(0, 15) + '..' : item.name;
+
+        receiptItemsContainer.innerHTML += `
+            <div class="receipt-item">
+                <div class="receipt-item-name">${shortName}</div>
+                <div class="receipt-item-qty">${item.cart_qty}</div>
+                <div class="receipt-item-price">${subtotal.toFixed(2)}</div>
+            </div>
+        `;
+    });
+}
+
+// 8. Close Receipt and Reset POS
+function closeReceiptAndReset() {
+    const modalEl = document.getElementById('receiptModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+
+    cart = [];
+    renderCart();
+    loadProducts();
+}
+
+// 9. Legacy Alert Wrapper
 function showAlert(type, message) {
     Swal.fire({
         icon: type === 'danger' ? 'error' : type,

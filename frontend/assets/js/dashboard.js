@@ -1,14 +1,50 @@
-document.addEventListener('DOMContentLoaded', loadDashboard);
+document.addEventListener('DOMContentLoaded', () => {
+    loadDashboard();
+    loadDashboardNotifications(); // Fetch alerts on load
+});
 
+// --- FETCH NOTIFICATIONS ---
+async function loadDashboardNotifications() {
+    const notifContainer = document.getElementById('dashboardNotifications');
+    if (!notifContainer) return;
+
+    try {
+        const res = await fetch('../backend/dashboard/get_notifications.php');
+        const data = await res.json();
+
+        if (data.status === 'success' && data.count > 0) {
+            notifContainer.innerHTML = ''; // Clear existing
+
+            data.data.forEach(notif => {
+                // Determine styling based on type
+                const alertType = notif.type === 'danger' ? 'alert-danger' : 'alert-warning';
+                const borderClass = notif.type === 'danger' ? 'border-danger' : 'border-warning';
+
+                notifContainer.innerHTML += `
+                    <div class="alert ${alertType} alert-dismissible fade show shadow-sm border-0 border-start border-4 ${borderClass} d-flex align-items-center mb-3" role="alert">
+                        <i class="bi ${notif.icon} fs-3 me-3"></i>
+                        <div>
+                            <div class="fw-bold text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.5px;">${notif.title}</div>
+                            <div>${notif.message}</div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `;
+            });
+        }
+    } catch (e) {
+        console.error("Failed to load notifications", e);
+    }
+}
+
+// --- MAIN DASHBOARD LOAD ---
 async function loadDashboard() {
     // 1. SAFETY CHECK: Only run this if we are actually on the dashboard
     if (!document.getElementById('kpiSales')) return;
 
     // 2. DATE LOGIC: Default to "This Month" if inputs are empty
     const today = new Date();
-    // First day of current month
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-    // Last day of current month
     const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
 
     const startInput = document.getElementById('dateStart');
@@ -58,23 +94,23 @@ async function loadDashboard() {
                 // Logic: What should the user do?
                 if (totalLoose <= item.critical_level) {
                     if (item.wholesale_boxes > 0) {
-                        actionBadge = `<span class="badge bg-warning text-dark">Explode Wholesale Box</span>`;
+                        actionBadge = `<span class="badge bg-warning text-dark px-3 py-2"><i class="bi bi-box-seam me-1"></i> Explode Wholesale Box</span>`;
                     } else {
-                        actionBadge = `<span class="badge bg-danger">Order from Supplier</span>`;
+                        actionBadge = `<span class="badge bg-danger px-3 py-2"><i class="bi bi-telephone me-1"></i> Order Supplier</span>`;
                     }
                 } else if (item.shelf_pcs < 10 && item.retail_pcs > 0) {
-                    actionBadge = `<span class="badge bg-info text-dark">Restock Shelf from Retail</span>`;
+                    actionBadge = `<span class="badge bg-info text-dark px-3 py-2"><i class="bi bi-arrow-left-right me-1"></i> Restock Shelf</span>`;
                 } else {
-                    actionBadge = `<span class="badge bg-success">Stock is Healthy</span>`;
+                    actionBadge = `<span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle me-1"></i> Healthy</span>`;
                 }
 
                 tbody.innerHTML += `
                     <tr>
-                        <td class="fw-bold">${item.name}</td>
-                        <td><span class="badge bg-primary fs-6">${item.wholesale_boxes}</span></td>
-                        <td>${item.retail_pcs}</td>
-                        <td>${item.shelf_pcs}</td>
-                        <td>${actionBadge}</td>
+                        <td class="fw-bold ps-4 text-dark">${item.name}</td>
+                        <td class="text-center"><span class="badge bg-secondary fs-6">${item.wholesale_boxes}</span></td>
+                        <td class="text-center text-primary fw-bold fs-6">${item.retail_pcs}</td>
+                        <td class="text-center text-success fw-bold fs-6">${item.shelf_pcs}</td>
+                        <td class="pe-4">${actionBadge}</td>
                     </tr>
                 `;
             });

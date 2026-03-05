@@ -239,3 +239,109 @@ body {
         display: block;
     }
 }
+
+/* --- THERMAL RECEIPT PRINTER STYLES --- */
+.receipt-wrapper {
+    width: 100%;
+    max-width: 300px;
+    /* Approx 80mm thermal paper width */
+    margin: 0 auto;
+    background: #fff;
+    padding: 20px;
+    font-family: 'Courier New', Courier, monospace;
+    /* Monospace is authentic for receipts */
+    color: #000;
+    font-size: 12px;
+    line-height: 1.4;
+    border: 1px dashed #ccc;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.receipt-header {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.receipt-header h4 {
+    font-weight: bold;
+    margin: 0;
+    font-size: 18px;
+}
+
+.receipt-header p {
+    margin: 2px 0;
+    font-size: 11px;
+}
+
+.receipt-divider {
+    border-top: 1px dashed #000;
+    margin: 8px 0;
+}
+
+.receipt-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.receipt-item-name {
+    flex: 2;
+    word-break: break-all;
+    padding-right: 10px;
+}
+
+.receipt-item-qty {
+    flex: 1;
+    text-align: left;
+}
+
+.receipt-item-price {
+    flex: 1;
+    text-align: right;
+}
+
+.receipt-total {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+.receipt-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 11px;
+}
+
+/* MAGIC: This hides the whole website and ONLY prints the receipt */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    #receiptPrintArea,
+    #receiptPrintArea * {
+        visibility: visible;
+    }
+
+    #receiptPrintArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 80mm;
+        /* Standard Thermal Printer Width */
+        border: none;
+        box-shadow: none;
+        padding: 0;
+    }
+
+    .modal {
+        position: absolute;
+        left: 0;
+        top: 0;
+        margin: 0;
+        padding: 0;
+        overflow: visible !important;
+    }
+}

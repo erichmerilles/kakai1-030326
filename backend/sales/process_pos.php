@@ -3,7 +3,6 @@
 session_start();
 require_once '../../config/database.php';
 
-// Ensure we ALWAYS return JSON, even if PHP crashes
 header('Content-Type: application/json');
 
 // 1. Auth Check
@@ -26,15 +25,35 @@ $totalAmount = 0;
 try {
     $pdo->beginTransaction();
 
-    // 3. Calculate Total
-    foreach ($cart as $item) {
-        $totalAmount += ($item['price'] * $item['qty']);
+    // 3. Bulletproof Data Extraction & Total Calculation
+    foreach ($cart as &$item) {
+        $productId = $item['product_id'] ?? 0;
+
+        // Handle both new mapped format ('cart_qty') and raw format ('qty')
+        $qtyNeeded = $item['cart_qty'] ?? ($item['qty'] ?? 0);
+        $type = $item['type'] ?? 'pack'; // Default to pack if missing
+
+        // Handle missing price gracefully
+        if (isset($item['price'])) {
+            $sellingPrice = (float)$item['price'];
+        } else {
+            // SAFETY FALLBACK: If frontend didn't send price, fetch it from DB
+            $stmtPrice = $pdo->prepare("SELECT current_selling_price FROM products WHERE product_id = ?");
+            $stmtPrice->execute([$productId]);
+            $sellingPrice = (float)$stmtPrice->fetchColumn();
+        }
+
+        // Save calculated values back into the array for the insertion step
+        $item['final_qty'] = $qtyNeeded;
+        $item['final_price'] = $sellingPrice;
+        $item['final_type'] = $type;
+
+        $totalAmount += ($sellingPrice * $qtyNeeded);
     }
 
     $receiptNo = 'REC-' . time() . '-' . rand(100, 999);
 
     // 4. Create Sale Header
-    // Using 'cashier_id' to match your database schema
     $stmtSale = $pdo->prepare("
         INSERT INTO sales (cashier_id, sale_date, total_amount, receipt_no) 
         VALUES (?, NOW(), ?, ?)
@@ -45,14 +64,22 @@ try {
     // 5. Process Each Item (Deduct Stock & Record Item)
     foreach ($cart as $item) {
         $productId = $item['product_id'];
-        $qtyNeeded = $item['qty'];
-        $sellingPrice = $item['price'];
+        $qtyNeeded = $item['final_qty'];
+        $sellingPrice = $item['final_price'];
+        $type = $item['final_type'];
+
+        // ROUTING LOGIC: Box -> Wholesale(1), Pack -> Shelf(3)
+        $locationId = ($type === 'box') ? 1 : 3;
 
         // A. Get Product Cost (for profit calculation)
-        $stmtProd = $pdo->prepare("SELECT current_cost_price FROM products WHERE product_id = ?");
+        $stmtProd = $pdo->prepare("SELECT current_cost_price, units_per_box FROM products WHERE product_id = ?");
         $stmtProd->execute([$productId]);
         $productData = $stmtProd->fetch();
-        $costPrice = $productData['current_cost_price'];
+
+        $baseCost = $productData['current_cost_price'] ?? 0;
+
+        // If selling a box, the cost to the store is (piece cost * pieces in box)
+        $unitCostAtSale = ($type === 'box') ? ($baseCost * ($productData['units_per_box'] ?: 1)) : $baseCost;
 
         // B. Insert Sale Item Record
         $stmtItem = $pdo->prepare("
@@ -64,19 +91,18 @@ try {
             $productId,
             $qtyNeeded,
             $sellingPrice,
-            $costPrice,
+            $unitCostAtSale,
             ($sellingPrice * $qtyNeeded)
         ]);
 
-        // C. STOCK DEDUCTION (FIFO Logic)
-        // FIX: Changed location_id from 2 (Warehouse) to 3 (Store Shelf)
+        // C. STOCK DEDUCTION (FIFO Logic - Dynamic Location)
         $stmtBatches = $pdo->prepare("
             SELECT batch_id, quantity 
             FROM inventory_batches 
-            WHERE product_id = ? AND location_id = 3 AND quantity > 0 
+            WHERE product_id = ? AND location_id = ? AND quantity > 0 
             ORDER BY expiry_date ASC
         ");
-        $stmtBatches->execute([$productId]);
+        $stmtBatches->execute([$productId, $locationId]);
         $batches = $stmtBatches->fetchAll();
 
         $remainingToDeduct = $qtyNeeded;
@@ -93,10 +119,9 @@ try {
                 $updateBatch = $pdo->prepare("UPDATE inventory_batches SET quantity = ? WHERE batch_id = ?");
                 $updateBatch->execute([$newQty, $batchId]);
 
-                // Log movement (From Shelf to Sale)
-                // FIX: Changed from_location_id to 3
-                $logStmt = $pdo->prepare("INSERT INTO stock_movements (product_id, from_location_id, to_location_id, quantity, movement_type, user_id, movement_date) VALUES (?, 3, NULL, ?, 'sale', ?, NOW())");
-                $logStmt->execute([$productId, $remainingToDeduct, $userId]);
+                // Log movement (From designated location to Sale)
+                $logStmt = $pdo->prepare("INSERT INTO stock_movements (product_id, from_location_id, to_location_id, quantity, movement_type, user_id, movement_date) VALUES (?, ?, NULL, ?, 'sale', ?, NOW())");
+                $logStmt->execute([$productId, $locationId, $remainingToDeduct, $userId]);
 
                 $remainingToDeduct = 0;
             } else {
@@ -104,18 +129,18 @@ try {
                 $updateBatch = $pdo->prepare("UPDATE inventory_batches SET quantity = 0 WHERE batch_id = ?");
                 $updateBatch->execute([$batchId]);
 
-                // Log movement (From Shelf to Sale)
-                // FIX: Changed from_location_id to 3
-                $logStmt = $pdo->prepare("INSERT INTO stock_movements (product_id, from_location_id, to_location_id, quantity, movement_type, user_id, movement_date) VALUES (?, 3, NULL, ?, 'sale', ?, NOW())");
-                $logStmt->execute([$productId, $currentQty, $userId]);
+                // Log movement 
+                $logStmt = $pdo->prepare("INSERT INTO stock_movements (product_id, from_location_id, to_location_id, quantity, movement_type, user_id, movement_date) VALUES (?, ?, NULL, ?, 'sale', ?, NOW())");
+                $logStmt->execute([$productId, $locationId, $currentQty, $userId]);
 
                 $remainingToDeduct -= $currentQty;
             }
         }
 
-        // Safety Check: If we couldn't find enough stock on the Shelf
+        // Safety Check: Display the correct location name in the error message
         if ($remainingToDeduct > 0) {
-            throw new Exception("Insufficient stock on Shelf for Product ID: $productId. Please restock from Warehouse.");
+            $locName = ($locationId == 1) ? "Wholesale Warehouse" : "Store Shelf";
+            throw new Exception("Insufficient stock in $locName for Product ID: $productId.");
         }
     }
 
