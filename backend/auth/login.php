@@ -38,12 +38,21 @@ try {
         $_SESSION['role'] = $user['role_name'];
         $_SESSION['username'] = $user['username'];
 
+        // Optional: Log successful login
+        logActivity($pdo, $user['user_id'], "User logged in successfully.");
+
         echo json_encode([
             "status" => "success",
             "role" => $user['role_name'],
             "message" => "Login successful"
         ]);
     } else {
+        // NEW: Log failed attempt for security audit
+        // We try to find the ID of the user they attempted to log in as, if they exist
+        $targetId = $user ? $user['user_id'] : 0; // Use 0 if the username was not found
+
+        logActivity($pdo, $targetId, "Security Alert: Failed login attempt for username: $username");
+
         throw new Exception("Invalid username or password.");
     }
 } catch (Exception $e) {

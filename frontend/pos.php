@@ -10,7 +10,13 @@ if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['admin', 'cashier
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
     <title>Point of Sale - KakaiOne</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/css/style.css">
 </head>
 
 <body class="bg-light">
@@ -51,7 +57,22 @@ if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['admin', 'cashier
                             <span class="h5">Total</span>
                             <span class="h4 text-primary fw-bold" id="cartTotal">₱0.00</span>
                         </div>
+
                         <button class="btn btn-success w-100 py-3 mb-2 fw-bold" onclick="processCheckout()">Complete Transaction</button>
+
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <button class="btn btn-warning w-100 fw-bold text-dark" onclick="holdCart()">
+                                    <i class="bi bi-pause-circle"></i> Hold Cart
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-info w-100 fw-bold text-white d-none" id="btnRestore" onclick="restoreCart()">
+                                    <i class="bi bi-play-circle"></i> Resume
+                                </button>
+                            </div>
+                        </div>
+
                         <button class="btn btn-light text-danger w-100" onclick="clearCart()">Clear Cart</button>
                     </div>
                 </div>
@@ -69,8 +90,14 @@ if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['admin', 'cashier
 
                     <div class="receipt-wrapper" id="receiptPrintArea">
                         <div class="receipt-header">
+                            <img src="assets/image/logo.png" class="receipt-logo" alt="Kakai's Store Logo">
                             <h4>KAKAI'S STORE</h4>
-                            <p>Wholesale & Retail Trading</p>
+                            <p class="store-info">
+                                Wholesale & Retail Trading<br>
+                                TIN: 123-456-789-000<br>
+                                123 Market St., Manila, Philippines<br>
+                                Tel: (02) 8123-4567
+                            </p>
                             <p id="receiptDate"></p>
                             <p>Receipt No: <span id="receiptNumber"></span></p>
                         </div>
@@ -93,8 +120,9 @@ if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['admin', 'cashier
                         <div class="receipt-divider"></div>
 
                         <div class="receipt-footer">
-                            <p>Thank you for shopping with us!</p>
-                            <p>System by KakaiOne POS</p>
+                            <p class="thank-you">*** THANK YOU FOR PURCHASING! ***</p>
+                            <p>Please keep this receipt.<br>Returns/Exchanges allowed within 7 days with tags attached.</p>
+                            <p style="margin-top: 10px;">System by KakaiOne POS</p>
                         </div>
                     </div>
 

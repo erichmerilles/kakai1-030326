@@ -2,19 +2,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-    /* Premium Palette */
     --sidebar-width: 280px;
     --sidebar-bg: #1e1e2d;
-    /* Deep Premium Navy/Black */
     --sidebar-text: #9899ac;
-    /* Muted Text */
     --sidebar-hover-bg: #2a2a3c;
-    /* Slightly lighter for hover */
     --active-text: #ffffff;
     --primary-color: #3699ff;
-    /* Vibrant Blue */
     --body-bg: #f5f8fa;
-    /* Clean Light Grey */
     --card-shadow: 0 0 20px 0 rgba(76, 87, 125, 0.02);
 }
 
@@ -24,6 +18,7 @@ body {
     min-height: 100vh;
     color: #3f4254;
     font-size: 0.95rem;
+    overflow-x: hidden;
 }
 
 /* --- SIDEBAR CONTAINER --- */
@@ -40,20 +35,16 @@ body {
     display: flex;
     flex-direction: column;
     box-shadow: 4px 0 10px rgba(0, 0, 0, 0.05);
-    /* Subtle lift */
     overflow-y: auto;
 }
 
-/* --- BRANDING AREA --- */
 .sidebar-header {
     height: 80px;
-    /* Taller header */
     padding: 0 30px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     background-color: rgba(0, 0, 0, 0.1);
-    /* Subtle darkening */
 }
 
 .brand-logo {
@@ -80,11 +71,11 @@ body {
     box-shadow: 0 4px 10px rgba(54, 153, 255, 0.3);
 }
 
-/* --- NAVIGATION LINKS --- */
 .sidebar-content {
     padding: 20px 15px;
 }
 
+/* --- ACCORDION SIDEBAR & NAV LINKS --- */
 .nav-section-label {
     color: #5d5f75;
     font-size: 0.75rem;
@@ -94,7 +85,8 @@ body {
     margin: 25px 0 10px 15px;
 }
 
-.nav-pills .nav-link {
+.nav-pills .nav-link,
+.nav-link-accordion {
     color: var(--sidebar-text);
     padding: 12px 20px;
     margin-bottom: 5px;
@@ -105,20 +97,18 @@ body {
     transition: all 0.2s ease;
 }
 
-.nav-pills .nav-link:hover {
+.nav-pills .nav-link:hover,
+.nav-link-accordion:hover {
     color: #fff;
     background-color: var(--sidebar-hover-bg);
 }
 
 .nav-pills .nav-link.active {
     background-color: #1b1b28;
-    /* Darker active background */
-    color: var(--active-color);
-    /* Blue text */
+    color: var(--active-text);
     position: relative;
 }
 
-/* The "Glowing Stick" Indicator */
 .nav-pills .nav-link.active::before {
     content: '';
     position: absolute;
@@ -132,23 +122,43 @@ body {
     box-shadow: 0 0 10px rgba(54, 153, 255, 0.5);
 }
 
-.nav-pills .nav-link i {
+.nav-pills .nav-link i,
+.nav-link-accordion i {
     font-size: 1.2rem;
     margin-right: 14px;
     width: 24px;
     text-align: center;
     color: #494b74;
-    /* Dimmed icon by default */
     transition: color 0.2s;
 }
 
-.nav-pills .nav-link.active i {
+.nav-pills .nav-link.active i,
+.nav-link-accordion:hover i,
+.nav-link-accordion:not(.collapsed) i {
     color: var(--primary-color);
-    /* Active icon color */
 }
 
 .nav-pills .nav-link:hover i {
     color: #fff;
+}
+
+.nav-link-accordion:not(.collapsed) {
+    color: var(--primary-color);
+    background-color: transparent;
+    box-shadow: none;
+}
+
+.accordion-button::after {
+    filter: invert(0.5);
+}
+
+.accordion-button:not(.collapsed)::after {
+    filter: invert(0.5) sepia(1) saturate(5) hue-rotate(180deg);
+}
+
+.accordion-body .nav-link {
+    font-size: 0.85rem;
+    padding: 8px 15px;
 }
 
 /* --- USER PROFILE (BOTTOM) --- */
@@ -179,7 +189,15 @@ body {
     margin-right: 12px;
 }
 
-/* --- RESPONSIVENESS --- */
+/* --- MAIN CONTENT & TABLES --- */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* --- RESPONSIVENESS LOGIC --- */
+
+/* Desktop Only */
 @media (min-width: 992px) {
     body {
         padding-left: var(--sidebar-width);
@@ -190,6 +208,7 @@ body {
     }
 }
 
+/* Tablets and Mobile (991px and below) */
 @media (max-width: 991.98px) {
     .sidebar {
         transform: translateX(-100%);
@@ -238,23 +257,60 @@ body {
     .sidebar-backdrop.show {
         display: block;
     }
+
+    .row>.col-lg-8,
+    .row>.col-lg-4 {
+        width: 100%;
+        margin-bottom: 20px;
+    }
+
+    .card.position-sticky {
+        position: relative !important;
+        top: 0 !important;
+    }
+}
+
+/* Strict Mobile Phones (576px and below) */
+@media (max-width: 575.98px) {
+    .d-flex.w-50 {
+        width: 100% !important;
+    }
+
+    td .d-flex.gap-2 {
+        flex-direction: column;
+        gap: 5px !important;
+    }
+
+    td .btn.w-50 {
+        width: 100% !important;
+    }
+
+    .dashboard-kpi h2 {
+        font-size: 1.5rem !important;
+    }
 }
 
 /* --- THERMAL RECEIPT PRINTER STYLES --- */
 .receipt-wrapper {
     width: 100%;
     max-width: 300px;
-    /* Approx 80mm thermal paper width */
     margin: 0 auto;
     background: #fff;
     padding: 20px;
     font-family: 'Courier New', Courier, monospace;
-    /* Monospace is authentic for receipts */
     color: #000;
     font-size: 12px;
     line-height: 1.4;
     border: 1px dashed #ccc;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.receipt-logo {
+    width: 65px;
+    height: auto;
+    margin: 0 auto 8px auto;
+    display: block;
+    filter: grayscale(100%) contrast(1.2);
 }
 
 .receipt-header {
@@ -271,6 +327,13 @@ body {
 .receipt-header p {
     margin: 2px 0;
     font-size: 11px;
+}
+
+.receipt-header p.store-info {
+    font-size: 10px;
+    color: #000;
+    line-height: 1.2;
+    margin-bottom: 8px;
 }
 
 .receipt-divider {
@@ -314,7 +377,12 @@ body {
     font-size: 11px;
 }
 
-/* MAGIC: This hides the whole website and ONLY prints the receipt */
+.receipt-footer .thank-you {
+    font-weight: bold;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
 @media print {
     body * {
         visibility: hidden;
@@ -330,7 +398,6 @@ body {
         left: 0;
         top: 0;
         width: 80mm;
-        /* Standard Thermal Printer Width */
         border: none;
         box-shadow: none;
         padding: 0;
@@ -344,4 +411,24 @@ body {
         padding: 0;
         overflow: visible !important;
     }
+}
+
+/* --- INTERACTIVE BADGES (Dashboard Recommendations) --- */
+.cursor-pointer {
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.cursor-pointer:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    opacity: 0.9;
+}
+
+.cursor-pointer:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }

@@ -1,8 +1,11 @@
 // frontend/assets/js/pos.js
 let cart = [];
+let heldCart = []; // Array to temporarily store suspended transactions
+let loadedProducts = []; // NEW: Store products globally for the scanner to search
 
 document.addEventListener('DOMContentLoaded', () => {
     loadProducts();
+    setupBarcodeScanner(); // Initialize the scanner listener
 });
 
 // 1. Load Products (With Separated Wholesale/Shelf Stock Logic)
@@ -12,11 +15,11 @@ async function loadProducts() {
         const data = await response.json();
 
         if (data.status === 'success') {
+            loadedProducts = data.data; // Save data for the scanner to search
             const tbody = document.getElementById('productList');
             tbody.innerHTML = '';
 
             data.data.forEach(p => {
-                // Read the separated stock locations from the updated backend
                 const shelfStock = parseInt(p.shelf_qty || 0);
                 const wholesaleStock = parseInt(p.wholesale_qty || 0);
                 const boxSize = parseInt(p.units_per_box);
@@ -25,12 +28,9 @@ async function loadProducts() {
                 const packPrice = parseFloat(p.pack_price || p.price);
                 const boxPrice = parseFloat(p.box_price || (p.price * boxSize));
 
-                // Fix apostrophe bug in names (e.g., Lay's)
                 const safeName = p.name.replace(/'/g, "\\'");
-
                 const canSellPack = shelfStock > 0;
 
-                // Smart Box Button Logic
                 let boxBtnHTML = '';
                 if (!boxSize || boxSize <= 0 || isNaN(boxSize)) {
                     boxBtnHTML = `<button class="btn btn-sm btn-outline-secondary w-50" disabled>No Box Size</button>`;
@@ -74,7 +74,6 @@ async function loadProducts() {
                                     Add ${unitName}<br>
                                     <small>₱${packPrice.toFixed(2)}</small>
                                 </button>
-
                                 ${boxBtnHTML}
                             </div>
                             <small class="text-muted d-block text-center mt-1">1 Box = ${boxSize || '?'} ${unitName}</small>
@@ -88,19 +87,62 @@ async function loadProducts() {
     }
 }
 
+// 1.5 NEW: Barcode Scanner Listener
+function setupBarcodeScanner() {
+    const scannerInput = document.getElementById('barcodeScannerInput');
+    if (!scannerInput) return;
+
+    scannerInput.addEventListener('keypress', function (e) {
+        // Barcode scanners automatically send an 'Enter' keypress (code 13) after reading a code
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const scannedSKU = this.value.trim().toUpperCase(); // Ensure case matches DB
+
+            // Search the loaded products array for the matching SKU
+            const product = loadedProducts.find(p => p.sku.toUpperCase() === scannedSKU);
+
+            if (product) {
+                const shelfStock = parseInt(product.shelf_qty || 0);
+                const packPrice = parseFloat(product.pack_price || product.price);
+                const unitName = product.base_unit || 'pcs';
+
+                // Add 1 pack to the cart automatically
+                addToCart(product.product_id, product.name, packPrice, 1, unitName, shelfStock);
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Unknown Barcode',
+                    text: `SKU '${scannedSKU}' not found in inventory.`,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+
+            // Clear the input and refocus immediately for the next scan
+            this.value = '';
+            this.focus();
+        }
+    });
+
+    // Ensure input stays focused if user clicks elsewhere (optional but helpful for speed)
+    document.addEventListener('click', (e) => {
+        // Don't steal focus if they are typing in a specific input or clicking a button
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+            scannerInput.focus();
+        }
+    });
+}
+
 // 2. Add Item to Cart
 function addToCart(id, name, price, qtyToAdd, type, currentStock) {
     const displayName = type === 'box' ? `${name} (BOX)` : `${name} (${type})`;
 
-    // Check if this specific type (Box/Pack) is already in cart
     const existingItem = cart.find(item => item.product_id === id && item.type === type);
 
-    // Calculate how many of this EXACT type are in the cart to prevent overselling
     const totalInCart = cart
         .filter(item => item.product_id === id && item.type === type)
         .reduce((sum, item) => sum + item.cart_qty, 0);
 
-    // qtyToAdd is always 1 here because the button adds 1 Box or 1 Pack
     if ((totalInCart + 1) > currentStock) {
         Swal.fire('Insufficient Stock', `You only have ${currentStock} available in this location.`, 'warning');
         return;
@@ -198,7 +240,7 @@ function clearCart() {
     });
 }
 
-// 6. Process Checkout (INTEGRATED WITH ROUTING)
+// 6. Process Checkout
 async function processCheckout() {
     if (cart.length === 0) {
         Swal.fire('Empty Cart', 'Please add items.', 'warning');
@@ -215,8 +257,6 @@ async function processCheckout() {
     });
 
     if (confirm.isConfirmed) {
-        // Send the exact cart directly to backend with 'type' included
-        // This tells PHP whether to deduct from Wholesale (box) or Shelf (packs)
         const backendCart = cart.map(item => {
             return {
                 product_id: item.product_id,
@@ -238,12 +278,9 @@ async function processCheckout() {
 
             if (result.status === 'success') {
                 Swal.close();
-
                 buildReceipt(result.receipt_no, cart, document.getElementById('cartTotal').textContent);
-
                 const receiptModal = new bootstrap.Modal(document.getElementById('receiptModal'));
                 receiptModal.show();
-
             } else {
                 Swal.fire('Error', result.message, 'error');
             }
@@ -265,7 +302,6 @@ function buildReceipt(receiptNo, currentCart, totalAmount) {
 
     currentCart.forEach(item => {
         const subtotal = item.price * item.cart_qty;
-
         const shortName = item.name.length > 15 ? item.name.substring(0, 15) + '..' : item.name;
 
         receiptItemsContainer.innerHTML += `
@@ -286,7 +322,7 @@ function closeReceiptAndReset() {
 
     cart = [];
     renderCart();
-    loadProducts();
+    loadProducts(); // Refresh stock numbers
 }
 
 // 9. Legacy Alert Wrapper
@@ -297,4 +333,47 @@ function showAlert(type, message) {
         timer: 2000,
         showConfirmButton: false
     });
+}
+
+// 10. Suspend Transaction (Hold Cart)
+function holdCart() {
+    if (cart.length === 0) {
+        Swal.fire('Cart is Empty', 'There is nothing to hold.', 'info');
+        return;
+    }
+
+    if (heldCart.length > 0) {
+        Swal.fire('Hold Limit Reached', 'You already have a cart on hold. Please resume or clear it first.', 'warning');
+        return;
+    }
+
+    heldCart = [...cart];
+    cart = [];
+    renderCart();
+
+    document.getElementById('btnRestore').classList.remove('d-none');
+
+    Swal.fire({
+        icon: 'success',
+        title: 'Transaction Suspended',
+        text: 'Cart held. You can now serve the next customer.',
+        timer: 2000,
+        showConfirmButton: false
+    });
+}
+
+// 11. Resume Suspended Transaction
+function restoreCart() {
+    if (cart.length > 0) {
+        Swal.fire('Active Cart', 'Please clear or checkout the current cart before resuming the held transaction.', 'warning');
+        return;
+    }
+
+    if (heldCart.length === 0) return;
+
+    cart = [...heldCart];
+    heldCart = [];
+    renderCart();
+
+    document.getElementById('btnRestore').classList.add('d-none');
 }

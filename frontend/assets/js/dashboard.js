@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     loadDashboard();
-    loadDashboardNotifications(); // Fetch alerts on load
+    loadDashboardNotifications();
 });
 
 // --- FETCH NOTIFICATIONS ---
@@ -13,10 +13,9 @@ async function loadDashboardNotifications() {
         const data = await res.json();
 
         if (data.status === 'success' && data.count > 0) {
-            notifContainer.innerHTML = ''; // Clear existing
+            notifContainer.innerHTML = '';
 
             data.data.forEach(notif => {
-                // Determine styling based on type
                 const alertType = notif.type === 'danger' ? 'alert-danger' : 'alert-warning';
                 const borderClass = notif.type === 'danger' ? 'border-danger' : 'border-warning';
 
@@ -39,50 +38,39 @@ async function loadDashboardNotifications() {
 
 // --- MAIN DASHBOARD LOAD ---
 async function loadDashboard() {
-    // 1. SAFETY CHECK: Only run this if we are actually on the dashboard
     if (!document.getElementById('kpiSales')) return;
 
-    // 2. DATE LOGIC: Default to "This Month" if inputs are empty
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
-
+    // Use URLSearchParams to handle date filters more cleanly
+    const urlParams = new URLSearchParams(window.location.search);
     const startInput = document.getElementById('dateStart');
     const endInput = document.getElementById('dateEnd');
 
-    // Set defaults in the UI if empty
     if (!startInput.value) {
-        startInput.value = firstDay;
-        endInput.value = lastDay;
+        const today = new Date();
+        startInput.value = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+        endInput.value = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
     }
 
-    const start = startInput.value;
-    const end = endInput.value;
-
     try {
-        // 3. FETCH DATA with Date Filters
-        const response = await fetch(`../backend/dashboard/get_dashboard_data.php?start=${start}&end=${end}`);
+        const response = await fetch(`../backend/dashboard/get_dashboard_data.php?start=${startInput.value}&end=${endInput.value}`);
         const data = await response.json();
 
         if (data.status === 'error') {
-            if (data.message.includes('Access Denied')) {
-                window.location.href = 'index.php';
-            }
-            alert(data.message);
+            if (data.message.includes('Access Denied')) window.location.href = 'index.php';
+            console.error("Dashboard Error:", data.message);
             return;
         }
 
-        // 4. POPULATE KPIs
+        // POPULATE KPIs with formatting
         document.getElementById('kpiSales').textContent = `₱${parseFloat(data.kpis.total_sales).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
         document.getElementById('kpiProfit').textContent = `₱${parseFloat(data.kpis.net_profit).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
         document.getElementById('kpiCrit').textContent = data.kpis.crit_stocks;
         document.getElementById('kpiExpiring').textContent = data.kpis.expiring_items;
 
-        // Populate Top Product
         const topProdEl = document.getElementById('topProduct');
         if (topProdEl) topProdEl.textContent = data.top_product;
 
-        // 5. POPULATE STOCK OVERVIEW TABLE
+        // POPULATE STOCK OVERVIEW TABLE
         const tbody = document.getElementById('stockTableBody');
         if (tbody) {
             tbody.innerHTML = '';
@@ -90,18 +78,23 @@ async function loadDashboard() {
             data.stock_overview.forEach(item => {
                 let totalLoose = parseInt(item.retail_pcs) + parseInt(item.shelf_pcs);
                 let actionBadge = '';
+                let clickableAction = '';
 
-                // Logic: What should the user do?
+                // Enhanced Active Assistant Logic
                 if (totalLoose <= item.critical_level) {
                     if (item.wholesale_boxes > 0) {
-                        actionBadge = `<span class="badge bg-warning text-dark px-3 py-2"><i class="bi bi-box-seam me-1"></i> Explode Wholesale Box</span>`;
+                        actionBadge = `<span class="badge bg-warning text-dark px-3 py-2 cursor-pointer" onclick="location.href='inventory.php'">
+                                        <i class="bi bi-box-seam me-1"></i> Explode Wholesale Box</span>`;
                     } else {
-                        actionBadge = `<span class="badge bg-danger px-3 py-2"><i class="bi bi-telephone me-1"></i> Order Supplier</span>`;
+                        actionBadge = `<span class="badge bg-danger px-3 py-2 cursor-pointer" onclick="location.href='stock_adjustments.php'">
+                                        <i class="bi bi-telephone me-1"></i> Order Supplier</span>`;
                     }
                 } else if (item.shelf_pcs < 10 && item.retail_pcs > 0) {
-                    actionBadge = `<span class="badge bg-info text-dark px-3 py-2"><i class="bi bi-arrow-left-right me-1"></i> Restock Shelf</span>`;
+                    actionBadge = `<span class="badge bg-info text-dark px-3 py-2 cursor-pointer" onclick="location.href='restock.php'">
+                                    <i class="bi bi-arrow-left-right me-1"></i> Restock Shelf</span>`;
                 } else {
-                    actionBadge = `<span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle me-1"></i> Healthy</span>`;
+                    actionBadge = `<span class="badge bg-success px-3 py-2">
+                                    <i class="bi bi-check-circle me-1"></i> Healthy</span>`;
                 }
 
                 tbody.innerHTML += `
@@ -121,11 +114,12 @@ async function loadDashboard() {
     }
 }
 
-// Global Logout Function
+// --- LOGOUT ---
 async function logout() {
     try {
-        await fetch('../backend/auth/logout.php');
-        window.location.href = 'index.php';
+        const res = await fetch('../backend/auth/logout.php');
+        const data = await res.json();
+        if (data.status === 'success') window.location.href = 'index.php';
     } catch (error) {
         console.error("Logout failed", error);
     }
